@@ -1,0 +1,119 @@
+local player = game.Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DragTPGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 160)
+Frame.Position = UDim2.new(0.5, -100, 0.5, -80)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.Active = true
+Frame.Draggable = false
+Frame.Parent = ScreenGui
+
+-- Kéo thả
+local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    Frame.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Layout
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.FillDirection = Enum.FillDirection.Vertical
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+UIListLayout.Padding = UDim.new(0,10)
+UIListLayout.Parent = Frame
+
+-- Chữ baconpremium đổi màu xanh dương nhạt → xanh dương đậm
+local Label = Instance.new("TextLabel")
+Label.Size = UDim2.new(0, 180, 0, 30)
+Label.BackgroundTransparency = 1
+Label.Text = "baconpremium"
+Label.TextColor3 = Color3.fromRGB(135, 206, 250) -- xanh dương nhạt
+Label.TextScaled = true
+Label.Parent = Frame
+
+spawn(function()
+    local increasing = true
+    local minB = 0.5  -- B nhạt
+    local maxB = 1    -- B đậm
+    local r = 135/255
+    local g = 206/255
+    local b = minB
+    while true do
+        if increasing then
+            b = b + 0.005
+            if b >= maxB then increasing = false end
+        else
+            b = b - 0.005
+            if b <= minB then increasing = true end
+        end
+        Label.TextColor3 = Color3.new(r, g, b)
+        wait(0.03)
+    end
+end)
+
+-- Biến lưu vị trí
+local savedPosition = nil
+
+-- Nút đặt vị trí
+local setPosButton = Instance.new("TextButton")
+setPosButton.Size = UDim2.new(0, 180, 0, 40)
+setPosButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+setPosButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+setPosButton.Text = "Đặt vị trí TP"
+setPosButton.Parent = Frame
+setPosButton.MouseButton1Click:Connect(function()
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        savedPosition = character.HumanoidRootPart.Position
+        setPosButton.Text = "Vị trí đã đặt!"
+    end
+end)
+
+-- Nút TP
+local tpButton = Instance.new("TextButton")
+tpButton.Size = UDim2.new(0, 180, 0, 40)
+tpButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+tpButton.Text = "TP đến vị trí"
+tpButton.Parent = Frame
+tpButton.MouseButton1Click:Connect(function()
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") and savedPosition then
+        character.HumanoidRootPart.CFrame = CFrame.new(savedPosition)
+    else
+        tpButton.Text = "Chưa đặt vị trí!"
+    end
+end)
