@@ -1,34 +1,63 @@
-local player = game.Players.LocalPlayer
+--// BACON PREMIUM GUI FULL FIXED //--
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DragTPGui"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+local Settings = {
+    RunFast = false,
+    InfJump = false,
+    Noclip = false,
+    HitboxEnabled = false,
+    ESPEnabled = false,
+    HitboxMode = "All",
+    ESPMode = "All",
+    SpeedValue = 50,
+    HitboxSize = 10,
+    Godmode = false
+}
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 160)
-Frame.Position = UDim2.new(0.5, -100, 0.5, -80)
-Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Frame.Active = true
-Frame.Draggable = false
-Frame.Parent = ScreenGui
+-- UI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "BaconPremium"
 
--- Kéo thả
+-- Icon Toggle
+local ToggleButton = Instance.new("ImageButton", ScreenGui)
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Position = UDim2.new(0, 20, 0.5, -25)
+ToggleButton.Image = "rbxassetid://72708576494036"
+ToggleButton.BackgroundTransparency = 1
+ToggleButton.Active = true
+
+-- Menu
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(180, 210, 255)
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+-- Toggle Menu
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Drag Icon
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
-    Frame.Position = UDim2.new(
-        startPos.X.Scale, startPos.X.Offset + delta.X,
-        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    ToggleButton.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
     )
 end
-Frame.InputBegan:Connect(function(input)
+ToggleButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
-        startPos = Frame.Position
+        startPos = ToggleButton.Position
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -36,7 +65,7 @@ Frame.InputBegan:Connect(function(input)
         end)
     end
 end)
-Frame.InputChanged:Connect(function(input)
+ToggleButton.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
         dragInput = input
     end
@@ -47,73 +76,221 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 
--- Layout
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.FillDirection = Enum.FillDirection.Vertical
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-UIListLayout.Padding = UDim.new(0,10)
-UIListLayout.Parent = Frame
+-- Tabs
+local TabFrame = Instance.new("Frame", MainFrame)
+TabFrame.Size = UDim2.new(1, 0, 0, 40)
+TabFrame.BackgroundTransparency = 1
+local Tabs = {}
+local TabNames = {"Main","Vision","Script","Setting"}
+local CurrentTab
+for i, name in ipairs(TabNames) do
+    local TabButton = Instance.new("TextButton", TabFrame)
+    TabButton.Size = UDim2.new(0.25, -5, 1, -5)
+    TabButton.Position = UDim2.new((i-1)*0.25, (i-1)*5, 0, 0)
+    TabButton.BackgroundColor3 = Color3.fromRGB(150, 190, 240)
+    TabButton.Text = name
+    TabButton.TextColor3 = Color3.fromRGB(255,255,255)
+    TabButton.Font = Enum.Font.SourceSansBold
+    TabButton.TextSize = 18
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0,8)
 
--- Chữ baconpremium đổi màu xanh dương nhạt → xanh dương đậm
-local Label = Instance.new("TextLabel")
-Label.Size = UDim2.new(0, 180, 0, 30)
-Label.BackgroundTransparency = 1
-Label.Text = "baconpremium"
-Label.TextColor3 = Color3.fromRGB(135, 206, 250) -- xanh dương nhạt
-Label.TextScaled = true
-Label.Parent = Frame
+    local Content = Instance.new("Frame", MainFrame)
+    Content.Size = UDim2.new(1, -20, 1, -60)
+    Content.Position = UDim2.new(0,10,0,50)
+    Content.Visible = false
+    Content.BackgroundTransparency = 1
+    Tabs[name] = Content
 
-spawn(function()
-    local increasing = true
-    local minB = 0.5  -- B nhạt
-    local maxB = 1    -- B đậm
-    local r = 135/255
-    local g = 206/255
-    local b = minB
-    while true do
-        if increasing then
-            b = b + 0.005
-            if b >= maxB then increasing = false end
-        else
-            b = b - 0.005
-            if b <= minB then increasing = true end
+    TabButton.MouseButton1Click:Connect(function()
+        if CurrentTab then Tabs[CurrentTab].Visible = false end
+        CurrentTab = name
+        Tabs[name].Visible = true
+    end)
+end
+CurrentTab = "Main"
+Tabs["Main"].Visible = true
+
+-- Create Button / Box
+local function createButton(parent,text,y,callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0,170,0,40)
+    btn.Position = UDim2.new(0,20,0,y)
+    btn.BackgroundColor3 = Color3.fromRGB(150,190,240)
+    btn.Text = text .. " [OFF]"
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    Instance.new("UICorner",btn).CornerRadius = UDim.new(0,8)
+    btn.MouseButton1Click:Connect(function()
+        callback(btn)
+    end)
+end
+local function createBox(parent,placeholder,y,default,callback)
+    local box = Instance.new("TextBox",parent)
+    box.Size = UDim2.new(0,170,0,40)
+    box.Position = UDim2.new(0,20,0,y)
+    box.BackgroundColor3 = Color3.fromRGB(200,220,255)
+    box.PlaceholderText = placeholder
+    box.Text = tostring(default)
+    box.TextColor3 = Color3.new(0,0,0)
+    box.Font = Enum.Font.SourceSans
+    box.TextSize = 18
+    Instance.new("UICorner",box).CornerRadius = UDim.new(0,8)
+    box.FocusLost:Connect(function()
+        local val = tonumber(box.Text)
+        if val then callback(val) end
+    end)
+end
+
+-- Toggle helper
+local function toggleSetting(btn,key,extra)
+    Settings[key] = not Settings[key]
+    if extra then Settings[extra.key] = extra.val end
+    btn.Text = btn.Text:split(" ")[1] .. " [" .. (Settings[key] and "ON" or "OFF") .. "]"
+end
+
+-- Main Tab
+createButton(Tabs["Main"],"RunFast",20,function(btn) toggleSetting(btn,"RunFast") end)
+
+-- InfJump
+local infJumpConn
+createButton(Tabs["Main"],"InfJump",70,function(btn)
+    Settings.InfJump = not Settings.InfJump
+    btn.Text = "InfJump ["..(Settings.InfJump and "ON" or "OFF").."]"
+    if Settings.InfJump and not infJumpConn then
+        infJumpConn = UIS.JumpRequest:Connect(function()
+            if Settings.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                LocalPlayer.Character.Humanoid:ChangeState("Jumping")
+            end
+        end)
+    elseif not Settings.InfJump and infJumpConn then
+        infJumpConn:Disconnect()
+        infJumpConn = nil
+    end
+end)
+
+-- Noclip
+local noclipLoop
+createButton(Tabs["Main"],"Noclip",120,function(btn)
+    Settings.Noclip = not Settings.Noclip
+    btn.Text = "Noclip ["..(Settings.Noclip and "ON" or "OFF").."]"
+    if Settings.Noclip and not noclipLoop then
+        noclipLoop = RunService.Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    elseif not Settings.Noclip and noclipLoop then
+        noclipLoop:Disconnect()
+        noclipLoop = nil
+    end
+end)
+
+-- Vision Tab
+createButton(Tabs["Vision"],"Hitbox All",20,function(btn) toggleSetting(btn,"HitboxEnabled",{key="HitboxMode",val="All"}) end)
+createButton(Tabs["Vision"],"Hitbox Team Check",70,function(btn) toggleSetting(btn,"HitboxEnabled",{key="HitboxMode",val="TeamCheck"}) end)
+createButton(Tabs["Vision"],"ESP All",120,function(btn) toggleSetting(btn,"ESPEnabled",{key="ESPMode",val="All"}) end)
+createButton(Tabs["Vision"],"ESP Team Check",170,function(btn) toggleSetting(btn,"ESPEnabled",{key="ESPMode",val="TeamCheck"}) end)
+
+-- Script Tab
+local function createOnceButton(parent,text,y,link)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0,170,0,40)
+    btn.Position = UDim2.new(0,20,0,y)
+    btn.BackgroundColor3 = Color3.fromRGB(150,190,240)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    Instance.new("UICorner",btn).CornerRadius = UDim.new(0,8)
+    btn.MouseButton1Click:Connect(function()
+        loadstring(game:HttpGet(link))()
+    end)
+end
+createOnceButton(Tabs["Script"],"Fly Script",20,"https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt")
+createOnceButton(Tabs["Script"],"TP Bacon",70,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/tpbobaconpremium")
+createOnceButton(Tabs["Script"],"Car Script",120,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/Car")
+
+-- Setting Tab
+createBox(Tabs["Setting"],"Enter Speed",20,50,function(v) Settings.SpeedValue=v end)
+createBox(Tabs["Setting"],"Enter Hitbox Size",70,10,function(v) Settings.HitboxSize=v end)
+createButton(Tabs["Setting"],"Godmode",120,function(btn) toggleSetting(btn,"Godmode") end)
+
+-- Hitbox helper
+local function getHitbox(hrp)
+    local adorn = hrp:FindFirstChild("HitboxBox")
+    if not adorn then
+        adorn = Instance.new("BoxHandleAdornment")
+        adorn.Name="HitboxBox"
+        adorn.Adornee=hrp
+        adorn.AlwaysOnTop=true
+        adorn.ZIndex=0
+        adorn.Size=Vector3.new(5,5,5)
+        adorn.Color3=Color3.fromRGB(150,200,255)
+        adorn.Transparency=0.5
+        adorn.Parent=hrp
+    end
+    return adorn
+end
+
+-- ESP helper
+local function getESP(char)
+    local hl = char:FindFirstChild("BaconESP")
+    if not hl then
+        hl = Instance.new("Highlight")
+        hl.Name="BaconESP"
+        hl.FillTransparency=1
+        hl.OutlineColor=Color3.fromRGB(150,200,255)
+        hl.OutlineTransparency=0
+        hl.Adornee=char
+        hl.Parent=char
+    end
+    return hl
+end
+
+-- Apply Godmode
+local function applyGodmode(char)
+    if not Settings.Godmode then return end
+    task.spawn(function()
+        repeat task.wait() until char:FindFirstChild("Humanoid")
+        local hum = char:FindFirstChild("Humanoid")
+        hum.MaxHealth = math.huge
+        hum.Health = math.huge
+        hum.BreakJointsOnDeath = false
+    end)
+end
+LocalPlayer.CharacterAdded:Connect(applyGodmode)
+if LocalPlayer.Character then applyGodmode(LocalPlayer.Character) end
+
+-- Core Loops
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local hum = char.Humanoid
+        hum.WalkSpeed = Settings.RunFast and Settings.SpeedValue or 16
+        if Settings.Godmode then
+            hum.MaxHealth = math.huge
+            hum.Health = math.huge
         end
-        Label.TextColor3 = Color3.new(r, g, b)
-        wait(0.03)
     end
-end)
 
--- Biến lưu vị trí
-local savedPosition = nil
+    -- Hitbox + ESP update
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr~=LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp=plr.Character.HumanoidRootPart
+            local allowHit = (Settings.HitboxMode=="All") or (Settings.HitboxMode=="TeamCheck" and plr.Team~=LocalPlayer.Team)
+            local allowESP = (Settings.ESPMode=="All") or (Settings.ESPMode=="TeamCheck" and plr.Team~=LocalPlayer.Team)
 
--- Nút đặt vị trí
-local setPosButton = Instance.new("TextButton")
-setPosButton.Size = UDim2.new(0, 180, 0, 40)
-setPosButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-setPosButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-setPosButton.Text = "Đặt vị trí TP"
-setPosButton.Parent = Frame
-setPosButton.MouseButton1Click:Connect(function()
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        savedPosition = character.HumanoidRootPart.Position
-        setPosButton.Text = "Vị trí đã đặt!"
-    end
-end)
+            local hitbox=getHitbox(hrp)
+            hitbox.Visible=Settings.HitboxEnabled and allowHit
+            hitbox.Size=Vector3.new(Settings.HitboxSize,Settings.HitboxSize,Settings.HitboxSize)
 
--- Nút TP
-local tpButton = Instance.new("TextButton")
-tpButton.Size = UDim2.new(0, 180, 0, 40)
-tpButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-tpButton.Text = "TP đến vị trí"
-tpButton.Parent = Frame
-tpButton.MouseButton1Click:Connect(function()
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") and savedPosition then
-        character.HumanoidRootPart.CFrame = CFrame.new(savedPosition)
-    else
-        tpButton.Text = "Chưa đặt vị trí!"
+            local esp=getESP(plr.Character)
+            esp.Enabled=Settings.ESPEnabled and allowESP
+        end
     end
 end)
