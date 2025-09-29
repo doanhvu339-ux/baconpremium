@@ -1,666 +1,297 @@
--- BaconPremium Full (KRNL-compatible)
--- Parent GUI vào PlayerGui
+--// BACON PREMIUM GUI FULL FIXED v2 //--
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+local UIS = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
 
-local lp = Players.LocalPlayer
+local Settings = {
+    RunFast = false,
+    InfJump = false,
+    Noclip = false,
+    HitboxEnabled = false,
+    ESPEnabled = false,
+    HitboxMode = "All",
+    ESPMode = "All",
+    SpeedValue = 50,
+    HitboxSize = 10,
+    Godmode = false
+}
 
--- Colors for text animation
-local lightBlue = Color3.fromRGB(173,216,230)
-local darkBlue  = Color3.fromRGB(0,100,200)
+-- UI
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "BaconPremium"
 
--- helper create
-local function make(class, props)
-    local o = Instance.new(class)
-    if props then
-        for k,v in pairs(props) do o[k] = v end
-    end
-    return o
-end
+-- Icon Toggle
+local ToggleButton = Instance.new("ImageButton", ScreenGui)
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Position = UDim2.new(0, 20, 0.5, -25)
+ToggleButton.Image = "rbxassetid://72708576494036"
+ToggleButton.BackgroundTransparency = 1
+ToggleButton.Active = true
 
--- animate color only for Text properties (TextColor3 or TextBox.TextColor3)
-local function animateTextColor(obj)
-    task.spawn(function()
-        while obj.Parent do
-            local t1 = TweenService:Create(obj, TweenInfo.new(1.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {TextColor3 = darkBlue})
-            t1:Play(); t1.Completed:Wait()
-            local t2 = TweenService:Create(obj, TweenInfo.new(1.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {TextColor3 = lightBlue})
-            t2:Play(); t2.Completed:Wait()
-        end
-    end)
-end
+-- Menu
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(180, 210, 255)
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 
--- Create GUI root
-local gui = make("ScreenGui", {Name = "BaconPremium", Parent = lp:WaitForChild("PlayerGui"), ResetOnSpawn = false})
-
--- Folder for ESP objects (Highlight, adornments)
-local espFolder = Instance.new("Folder", lp:WaitForChild("PlayerGui"))
-espFolder.Name = "BaconESP"
-
--- -------------------------
--- Toggle icon (draggable)
--- -------------------------
-local toggleBtn = make("TextButton", {
-    Parent = gui,
-    Size = UDim2.new(0,48,0,48),
-    Position = UDim2.new(0, 10, 0.5, -24),
-    BackgroundTransparency = 1,
-    Text = ""
-})
-local iconImg = make("ImageLabel", {Parent = toggleBtn, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Image = "rbxassetid://72708576494036"})
--- small visual corner
-make("UICorner",{Parent = toggleBtn, CornerRadius = UDim.new(0,8)})
-
--- -------------------------
--- Main menu (draggable area + custom drag)
--- -------------------------
-local main = make("Frame", {
-    Parent = gui,
-    Size = UDim2.new(0,520,0,360),
-    Position = UDim2.new(0.5, -260, 0.5, -180),
-    BackgroundColor3 = Color3.fromRGB(20,20,20),
-    Visible = false
-})
-make("UICorner", {Parent = main, CornerRadius = UDim.new(0,8)})
-
--- Title
-local title = make("TextLabel", {
-    Parent = main,
-    Size = UDim2.new(1,0,0,40),
-    Position = UDim2.new(0,0,0,0),
-    BackgroundTransparency = 1,
-    Text = "BaconPremium",
-    Font = Enum.Font.GothamBold,
-    TextSize = 20,
-    TextColor3 = lightBlue,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    TextYAlignment = Enum.TextYAlignment.Center
-})
-animateTextColor(title)
-
--- Scrolling tabbar
-local tabBar = make("ScrollingFrame", {
-    Parent = main,
-    Size = UDim2.new(1, -20, 0, 40),
-    Position = UDim2.new(0,10,0,45),
-    BackgroundTransparency = 1,
-    CanvasSize = UDim2.new(0, 800, 0, 0),
-    ScrollBarThickness = 6,
-    ScrollBarImageColor3 = Color3.fromRGB(120,120,120),
-    ClipsDescendants = false
-})
-local layout = make("UIListLayout", {Parent = tabBar})
-layout.FillDirection = Enum.FillDirection.Horizontal
-layout.Padding = UDim.new(0,6)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-
--- Container for pages
-local tabContainer = make("Frame", {Parent = main, Size = UDim2.new(1, -20, 1, -110), Position = UDim2.new(0,10,0,100), BackgroundTransparency = 1})
-
--- Utility to create tab button
-local function createTabButton(text)
-    local btn = make("TextButton", {
-        Parent = tabBar,
-        Size = UDim2.new(0,160,1,0),
-        BackgroundColor3 = Color3.fromRGB(35,35,35),
-        BorderSizePixel = 0,
-        Text = text,
-        Font = Enum.Font.GothamBold,
-        TextSize = 16,
-        TextColor3 = lightBlue
-    })
-    animateTextColor(btn)
-    return btn
-end
-
--- Create tabs
-local playerBtn = createTabButton("Player")
-local hitboxBtn = createTabButton("Hitbox & ESP")
-local scriptBtn = createTabButton("Script")
-local mm2Btn    = createTabButton("MM2")
-
--- Create pages
-local playerPage = make("Frame", {Parent = tabContainer, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1})
-local hitboxPage = make("Frame", {Parent = tabContainer, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Visible = false})
-local scriptPage = make("Frame", {Parent = tabContainer, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Visible = false})
-local mm2Page    = make("Frame", {Parent = tabContainer, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Visible = false})
-
-local function showPage(page, activeBtn)
-    for _,p in pairs(tabContainer:GetChildren()) do
-        if p:IsA("Frame") then p.Visible = false end
-    end
-    page.Visible = true
-    -- reset tab colors
-    for _,b in pairs({playerBtn, hitboxBtn, scriptBtn, mm2Btn}) do
-        b.BackgroundColor3 = Color3.fromRGB(35,35,35)
-    end
-    if activeBtn then activeBtn.BackgroundColor3 = lightBlue end
-end
-showPage(playerPage, playerBtn)
-
--- Toggle main with icon click
-toggleBtn.MouseButton1Click:Connect(function()
-    main.Visible = not main.Visible
+-- Toggle Menu
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
 end)
 
--- --------- Dragging: main and icon ---------
--- main dragging
-do
-    local dragging, dragInput, dragStart, startPos
-    main.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = main.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    main.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    RunService.RenderStepped:Connect(function()
-        if dragging and dragInput then
-            local delta = dragInput.Position - dragStart
-            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+-- Drag Icon
+local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    ToggleButton.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
 end
-
--- icon dragging
-do
-    local draggingIcon, dragInputIcon, dragStartIcon, startIconPos
-    toggleBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            draggingIcon = true
-            dragStartIcon = input.Position
-            startIconPos = toggleBtn.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then draggingIcon = false end
-            end)
-        end
-    end)
-    toggleBtn.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInputIcon = input end
-    end)
-    RunService.RenderStepped:Connect(function()
-        if draggingIcon and dragInputIcon then
-            local delta = dragInputIcon.Position - dragStartIcon
-            toggleBtn.Position = UDim2.new(startIconPos.X.Scale, startIconPos.X.Offset + delta.X, startIconPos.Y.Scale, startIconPos.Y.Offset + delta.Y)
-        end
-    end)
-end
-
--- Tab connections
-playerBtn.MouseButton1Click:Connect(function() showPage(playerPage, playerBtn) end)
-hitboxBtn.MouseButton1Click:Connect(function() showPage(hitboxPage, hitboxBtn) end)
-scriptBtn.MouseButton1Click:Connect(function() showPage(scriptPage, scriptBtn) end)
-mm2Btn.MouseButton1Click:Connect(function() showPage(mm2Page, mm2Btn) end)
-
--- =========================================================
--- Tab 1: Player (WalkSpeed, InfJump, NoClip, AntiDie)
--- =========================================================
--- WalkSpeed input + toggle
-local walkBox = make("TextBox", {Parent = playerPage, Size = UDim2.new(0,120,0,30), Position = UDim2.new(0,10,0,10), Text = "50", Font = Enum.Font.Gotham})
-animateTextColor(walkBox)
-local walkBtn = make("TextButton", {Parent = playerPage, Size = UDim2.new(0,120,0,30), Position = UDim2.new(0,140,0,10), Text = "Run: OFF"})
-animateTextColor(walkBtn)
-local walkOn = false
-local walkValue = 50
-
-local function applyWalk()
-    local character = lp.Character
-    if character then
-        local hum = character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = (walkOn and (walkValue or 16)) or 16 end
+ToggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleButton.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
+end)
+ToggleButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Tabs
+local TabFrame = Instance.new("Frame", MainFrame)
+TabFrame.Size = UDim2.new(1, 0, 0, 40)
+TabFrame.BackgroundTransparency = 1
+local Tabs = {}
+local TabNames = {"Main","Vision","Script","Setting"}
+local CurrentTab
+for i, name in ipairs(TabNames) do
+    local TabButton = Instance.new("TextButton", TabFrame)
+    TabButton.Size = UDim2.new(0.25, -5, 1, -5)
+    TabButton.Position = UDim2.new((i-1)*0.25, (i-1)*5, 0, 0)
+    TabButton.BackgroundColor3 = Color3.fromRGB(150, 190, 240)
+    TabButton.Text = name
+    TabButton.TextColor3 = Color3.fromRGB(255,255,255)
+    TabButton.Font = Enum.Font.SourceSansBold
+    TabButton.TextSize = 18
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0,8)
+
+    local Content = Instance.new("Frame", MainFrame)
+    Content.Size = UDim2.new(1, -20, 1, -60)
+    Content.Position = UDim2.new(0,10,0,50)
+    Content.Visible = false
+    Content.BackgroundTransparency = 1
+    Tabs[name] = Content
+
+    TabButton.MouseButton1Click:Connect(function()
+        if CurrentTab then Tabs[CurrentTab].Visible = false end
+        CurrentTab = name
+        Tabs[name].Visible = true
+    end)
+end
+CurrentTab = "Main"
+Tabs["Main"].Visible = true
+
+-- Create Button / Box
+local function createButton(parent,text,y,callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0,170,0,40)
+    btn.Position = UDim2.new(0,20,0,y)
+    btn.BackgroundColor3 = Color3.fromRGB(150,190,240)
+    btn.Text = text .. " [OFF]"
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    Instance.new("UICorner",btn).CornerRadius = UDim.new(0,8)
+    btn.MouseButton1Click:Connect(function()
+        callback(btn)
+    end)
+end
+local function createBox(parent,placeholder,y,default,callback)
+    local box = Instance.new("TextBox",parent)
+    box.Size = UDim2.new(0,170,0,40)
+    box.Position = UDim2.new(0,20,0,y)
+    box.BackgroundColor3 = Color3.fromRGB(200,220,255)
+    box.PlaceholderText = placeholder
+    box.Text = tostring(default)
+    box.TextColor3 = Color3.new(0,0,0)
+    box.Font = Enum.Font.SourceSans
+    box.TextSize = 18
+    Instance.new("UICorner",box).CornerRadius = UDim.new(0,8)
+    box.FocusLost:Connect(function()
+        local val = tonumber(box.Text)
+        if val then callback(val) end
+    end)
 end
 
-walkBtn.MouseButton1Click:Connect(function()
-    walkOn = not walkOn
-    walkValue = tonumber(walkBox.Text) or 50
-    walkBtn.Text = walkOn and "Run: ON" or "Run: OFF"
-    applyWalk()
-end)
+-- Toggle helper
+local function toggleSetting(btn,key,extra)
+    Settings[key] = not Settings[key]
+    if extra then Settings[extra.key] = extra.val end
+    btn.Text = btn.Text:split(" ")[1] .. " [" .. (Settings[key] and "ON" or "OFF") .. "]"
+end
+
+-- Main Tab
+createButton(Tabs["Main"],"RunFast",20,function(btn) toggleSetting(btn,"RunFast") end)
 
 -- InfJump
-local infBtn = make("TextButton", {Parent = playerPage, Size = UDim2.new(0,120,0,30), Position = UDim2.new(0,10,0,50), Text = "InfJump: OFF"})
-animateTextColor(infBtn)
-local infJump = false
-infBtn.MouseButton1Click:Connect(function() infJump = not infJump infBtn.Text = infJump and "InfJump: ON" or "InfJump: OFF" end)
-UserInputService.JumpRequest:Connect(function() if infJump and lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then lp.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping) end end)
-
--- NoClip
-local noclipBtn = make("TextButton", {Parent = playerPage, Size = UDim2.new(0,120,0,30), Position = UDim2.new(0,140,0,50), Text = "NoClip: OFF"})
-animateTextColor(noclipBtn)
-local noclip = false
-noclipBtn.MouseButton1Click:Connect(function() noclip = not noclip noclipBtn.Text = noclip and "NoClip: ON" or "NoClip: OFF" end)
-RunService.Stepped:Connect(function()
-    if noclip and lp.Character then
-        for _,part in pairs(lp.Character:GetDescendants()) do
-            if part:IsA("BasePart") then pcall(function() part.CanCollide = false end) end
-        end
-    end
-end)
-
--- AntiDie (auto heal)
-local antiBtn = make("TextButton", {Parent = playerPage, Size = UDim2.new(0,120,0,30), Position = UDim2.new(0,10,0,90), Text = "AntiDie: OFF"})
-animateTextColor(antiBtn)
-local antiOn = false
-antiBtn.MouseButton1Click:Connect(function() antiOn = not antiOn antiBtn.Text = antiOn and "AntiDie: ON" or "AntiDie: OFF" end)
-RunService.Heartbeat:Connect(function()
-    if antiOn and lp.Character then
-        local hum = lp.Character:FindFirstChildOfClass("Humanoid")
-        if hum and hum.Health <= 0 then
-            pcall(function() hum.Health = hum.MaxHealth end)
-        end
-    end
-end)
-
--- Reapply settings after respawn
-lp.CharacterAdded:Connect(function(ch)
-    task.wait(1)
-    if walkOn then
-        local h = ch:FindFirstChildOfClass("Humanoid")
-        if h then h.WalkSpeed = walkValue end
-    end
-end)
-
--- =========================================================
--- Tab 2: Hitbox & ESP
--- =========================================================
--- Hitbox controls
-local hbBox = make("TextBox", {Parent = hitboxPage, Size = UDim2.new(0,120,0,30), Position = UDim2.new(0,10,0,10), Text = "5", Font = Enum.Font.Gotham})
-animateTextColor(hbBox)
-local hbAllBtn = make("TextButton", {Parent = hitboxPage, Size = UDim2.new(0,140,0,30), Position = UDim2.new(0,140,0,10), Text = "Hitbox All: OFF"})
-local hbEnemyBtn = make("TextButton", {Parent = hitboxPage, Size = UDim2.new(0,160,0,30), Position = UDim2.new(0,300,0,10), Text = "Hitbox Enemy: OFF"})
-animateTextColor(hbAllBtn); animateTextColor(hbEnemyBtn)
-
-local hbAllOn, hbEnemyOn = false, false
-
-hbAllBtn.MouseButton1Click:Connect(function()
-    hbAllOn = not hbAllOn
-    if hbAllOn then hbEnemyOn = false end
-    hbAllBtn.Text = hbAllOn and "Hitbox All: ON" or "Hitbox All: OFF"
-    hbEnemyBtn.Text = hbEnemyOn and "Hitbox Enemy: ON" or "Hitbox Enemy: OFF"
-end)
-hbEnemyBtn.MouseButton1Click:Connect(function()
-    hbEnemyOn = not hbEnemyOn
-    if hbEnemyOn then hbAllOn = false end
-    hbEnemyBtn.Text = hbEnemyOn and "Hitbox Enemy: ON" or "Hitbox Enemy: OFF"
-    hbAllBtn.Text = hbAllOn and "Hitbox All: ON" or "Hitbox All: OFF"
-end)
-
--- Apply hitbox changes each heartbeat
-RunService.Heartbeat:Connect(function()
-    local size = tonumber(hbBox.Text) or 5
-    for _,plr in pairs(Players:GetPlayers()) do
-        if plr ~= lp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = plr.Character.HumanoidRootPart
-            if hbAllOn or (hbEnemyOn and plr.Team ~= lp.Team) then
-                pcall(function()
-                    hrp.Size = Vector3.new(size, size, size)
-                    hrp.Transparency = 0.7
-                    hrp.Material = Enum.Material.Neon
-                    hrp.BrickColor = BrickColor.new("Pastel light blue")
-                    hrp.CanCollide = false
-                end)
-            else
-                pcall(function()
-                    hrp.Size = Vector3.new(2,2,1)
-                    hrp.Transparency = 1
-                    hrp.Material = Enum.Material.Plastic
-                end)
+local infJumpConn
+createButton(Tabs["Main"],"InfJump",70,function(btn)
+    Settings.InfJump = not Settings.InfJump
+    btn.Text = "InfJump ["..(Settings.InfJump and "ON" or "OFF").."]"
+    if Settings.InfJump and not infJumpConn then
+        infJumpConn = UIS.JumpRequest:Connect(function()
+            if Settings.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                LocalPlayer.Character.Humanoid:ChangeState("Jumping")
             end
-        end
+        end)
+    elseif not Settings.InfJump and infJumpConn then
+        infJumpConn:Disconnect()
+        infJumpConn = nil
     end
 end)
 
--- ESP All / Enemy using Highlight (outline only)
-local espAllOn, espEnemyOn = false, false
-local function clearHighlights(suffix)
-    for _,v in pairs(espFolder:GetChildren()) do
-        if v:IsA("Highlight") and (not suffix or v.Name:find(suffix)) then
-            v:Destroy()
-        end
-    end
-end
-local function addHighlightFor(plr, tagSuffix, color)
-    if not plr.Character then return end
-    local name = plr.Name .. tagSuffix
-    if espFolder:FindFirstChild(name) then return end
-    local hl = Instance.new("Highlight")
-    hl.Name = name
-    hl.Adornee = plr.Character
-    hl.FillTransparency = 1
-    hl.OutlineTransparency = 0
-    hl.OutlineColor = color
-    hl.Parent = espFolder
-end
-
-local espAllBtn = make("TextButton", {Parent = hitboxPage, Size = UDim2.new(0,140,0,30), Position = UDim2.new(0,10,0,50), Text = "ESP All: OFF"})
-local espEnemyBtn = make("TextButton", {Parent = hitboxPage, Size = UDim2.new(0,160,0,30), Position = UDim2.new(0,160,0,50), Text = "ESP Enemy: OFF"})
-animateTextColor(espAllBtn); animateTextColor(espEnemyBtn)
-
-espAllBtn.MouseButton1Click:Connect(function()
-    espAllOn = not espAllOn
-    if espAllOn then espEnemyOn = false end
-    espAllBtn.Text = espAllOn and "ESP All: ON" or "ESP All: OFF"
-    espEnemyBtn.Text = espEnemyOn and "ESP Enemy: ON" or "ESP Enemy: OFF"
-    clearHighlights("_ESP")
-    if espAllOn then
-        for _,p in pairs(Players:GetPlayers()) do if p ~= lp and p.Character then addHighlightFor(p, "_ESP", lightBlue) end end
-    end
-end)
-espEnemyBtn.MouseButton1Click:Connect(function()
-    espEnemyOn = not espEnemyOn
-    if espEnemyOn then espAllOn = false end
-    espEnemyBtn.Text = espEnemyOn and "ESP Enemy: ON" or "ESP Enemy: OFF"
-    espAllBtn.Text = espAllOn and "ESP All: ON" or "ESP All: OFF"
-    clearHighlights("_ESP")
-    if espEnemyOn then
-        for _,p in pairs(Players:GetPlayers()) do if p ~= lp and p.Team ~= lp.Team and p.Character then addHighlightFor(p, "_ESP", lightBlue) end end
-    end
-end)
-
--- =========================================================
--- Tab 3: Script (Fly loader example)
--- =========================================================
-local flyBtn = make("TextButton", {Parent = scriptPage, Size = UDim2.new(0,220,0,40), Position = UDim2.new(0,10,0,10), Text = "Run FlyGuiV3 (GitHub)"})
-animateTextColor(flyBtn)
-flyBtn.MouseButton1Click:Connect(function()
-    -- Load external fly GUI (network call)
-    local ok, res = pcall(function() return game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt") end)
-    if ok and res and #res > 10 then
-        local fok, ferr = pcall(function() loadstring(res)() end)
-        if not fok then warn("Fly load error:", ferr) end
-    else
-        warn("Could not fetch FlyGuiV3")
-    end
-end)
-
--- =========================================================
--- Tab 4: MM2 (Hide Innocents + ESP groups + Gun ESP + Shoot Button)
--- =========================================================
--- Helper: determine role value for player (common pattern in many MM2 forks)
-local function getRoleValue(plr)
-    -- try common patterns: plr:FindFirstChild("Role") or plr:GetAttribute("Role")
-    if plr:FindFirstChild("Role") and plr.Role.Value then return tostring(plr.Role.Value) end
-    local a = plr:GetAttribute("Role")
-    if a then return tostring(a) end
-    -- fallback: check leaderstats or other heuristics (not reliable)
-    return nil
-end
-
--- Hide innocents (local removal)
-local hideInnocents = false
-local hideBtn = make("TextButton", {Parent = mm2Page, Size = UDim2.new(0,200,0,36), Position = UDim2.new(0,10,0,10), Text = "Hide Innocents: OFF"})
-animateTextColor(hideBtn)
-hideBtn.MouseButton1Click:Connect(function()
-    hideInnocents = not hideInnocents
-    hideBtn.Text = hideInnocents and "Hide Innocents: ON" or "Hide Innocents: OFF"
-    for _,plr in pairs(Players:GetPlayers()) do
-        if plr ~= lp and plr.Character then
-            local role = getRoleValue(plr)
-            if role and role:lower():find("innocent") then
-                -- local hide by setting Parent nil for character model (local only)
-                if hideInnocents then
-                    pcall(function() plr.Character.Parent = nil end)
-                else
-                    pcall(function() plr.Character.Parent = workspace end)
+-- Noclip
+local noclipLoop
+createButton(Tabs["Main"],"Noclip",120,function(btn)
+    Settings.Noclip = not Settings.Noclip
+    btn.Text = "Noclip ["..(Settings.Noclip and "ON" or "OFF").."]"
+    if Settings.Noclip and not noclipLoop then
+        noclipLoop = RunService.Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
                 end
             end
-        end
+        end)
+    elseif not Settings.Noclip and noclipLoop then
+        noclipLoop:Disconnect()
+        noclipLoop = nil
     end
-end)
--- Keep update on join/character
-Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function(c)
-        task.wait(0.8)
-        if hideInnocents then
-            local role = getRoleValue(p)
-            if role and role:lower():find("innocent") then pcall(function() c.Parent = nil end) end
-        end
-    end)
 end)
 
--- ESP Innocents (green), Sheriff (blue), Murderer (red)
-local function toggleRoleESP(roleName, state, color)
-    -- remove matching highlights first
-    for _,v in pairs(espFolder:GetChildren()) do
-        if v:IsA("Highlight") and v.Name:match("^" .. roleName .. "_") then
-            v:Destroy()
-        end
+-- Vision Tab
+createButton(Tabs["Vision"],"Hitbox All",20,function(btn) toggleSetting(btn,"HitboxEnabled",{key="HitboxMode",val="All"}) end)
+createButton(Tabs["Vision"],"Hitbox Team Check",70,function(btn) toggleSetting(btn,"HitboxEnabled",{key="HitboxMode",val="TeamCheck"}) end)
+createButton(Tabs["Vision"],"ESP All",120,function(btn) toggleSetting(btn,"ESPEnabled",{key="ESPMode",val="All"}) end)
+createButton(Tabs["Vision"],"ESP Team Check",170,function(btn) toggleSetting(btn,"ESPEnabled",{key="ESPMode",val="TeamCheck"}) end)
+
+-- Script Tab
+local function createOnceButton(parent,text,y,link)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0,170,0,40)
+    btn.Position = UDim2.new(0,20,0,y)
+    btn.BackgroundColor3 = Color3.fromRGB(150,190,240)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    Instance.new("UICorner",btn).CornerRadius = UDim.new(0,8)
+    btn.MouseButton1Click:Connect(function()
+        loadstring(game:HttpGet(link))()
+    end)
+end
+createOnceButton(Tabs["Script"],"Fly Script",20,"https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt")
+createOnceButton(Tabs["Script"],"TP Bacon",70,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/tpbobaconpremium")
+createOnceButton(Tabs["Script"],"Car Script",120,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/Car")
+createOnceButton(Tabs["Script"],"Float Bacon",170,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/floatbacon")
+
+-- Setting Tab
+createBox(Tabs["Setting"],"Enter Speed",20,50,function(v) Settings.SpeedValue=v end)
+createBox(Tabs["Setting"],"Enter Hitbox Size",70,10,function(v) Settings.HitboxSize=v end)
+createButton(Tabs["Setting"],"Godmode",120,function(btn) toggleSetting(btn,"Godmode") end)
+
+-- Hitbox helper
+local function getHitbox(hrp)
+    local adorn = hrp:FindFirstChild("HitboxBox")
+    if not adorn then
+        adorn = Instance.new("BoxHandleAdornment")
+        adorn.Name="HitboxBox"
+        adorn.Adornee=hrp
+        adorn.AlwaysOnTop=true
+        adorn.ZIndex=0
+        adorn.Size=Vector3.new(5,5,5)
+        adorn.Color3=Color3.fromRGB(150,200,255)
+        adorn.Transparency=0.5
+        adorn.Parent=hrp
     end
-    if not state then return end
-    for _,p in pairs(Players:GetPlayers()) do
-        if p ~= lp and p.Character then
-            local r = getRoleValue(p)
-            if r and r:lower():find(roleName:lower()) then
-                local hl = Instance.new("Highlight")
-                hl.Name = roleName .. "_" .. p.Name
-                hl.Adornee = p.Character
-                hl.FillTransparency = 1
-                hl.OutlineTransparency = 0
-                hl.OutlineColor = color
-                hl.Parent = espFolder
-            end
-        end
-    end
+    return adorn
 end
 
--- Innocents ESP button (green)
-local espInnocBtn = make("TextButton", {Parent = mm2Page, Size = UDim2.new(0,200,0,36), Position = UDim2.new(0,230,0,10), Text = "ESP Innocents: OFF"})
-animateTextColor(espInnocBtn)
-local espInnocOn = false
-espInnocBtn.MouseButton1Click:Connect(function()
-    espInnocOn = not espInnocOn
-    espInnocBtn.Text = espInnocOn and "ESP Innocents: ON" or "ESP Innocents: OFF"
-    toggleRoleESP("Innocent", espInnocOn, Color3.fromRGB(0,200,0))
-end)
-
--- Sheriff ESP (blue)
-local espSheriffBtn = make("TextButton", {Parent = mm2Page, Size = UDim2.new(0,200,0,36), Position = UDim2.new(0,10,0,60), Text = "ESP Sheriff: OFF"})
-animateTextColor(espSheriffBtn)
-local espSheriffOn = false
-espSheriffBtn.MouseButton1Click:Connect(function()
-    espSheriffOn = not espSheriffOn
-    espSheriffBtn.Text = espSheriffOn and "ESP Sheriff: ON" or "ESP Sheriff: OFF"
-    toggleRoleESP("Sheriff", espSheriffOn, Color3.fromRGB(0,120,255))
-end)
-
--- Murderer ESP (red)
-local espMurderBtn = make("TextButton", {Parent = mm2Page, Size = UDim2.new(0,200,0,36), Position = UDim2.new(0,230,0,60), Text = "ESP Murderer: OFF"})
-animateTextColor(espMurderBtn)
-local espMurderOn = false
-espMurderBtn.MouseButton1Click:Connect(function()
-    espMurderOn = not espMurderOn
-    espMurderBtn.Text = espMurderOn and "ESP Murderer: ON" or "ESP Murderer: OFF"
-    toggleRoleESP("Murderer", espMurderOn, Color3.fromRGB(255,50,50))
-end)
-
--- ESP Gun (gold)
-local espGunBtn = make("TextButton", {Parent = mm2Page, Size = UDim2.new(0,200,0,36), Position = UDim2.new(0,10,0,110), Text = "ESP Gun: OFF"})
-animateTextColor(espGunBtn)
-local espGunOn = false
-local gunAdorns = {}
-
-local function updateGunESP(enable)
-    -- destroy existing
-    for _,a in pairs(gunAdorns) do pcall(function() a:Destroy() end) end
-    gunAdorns = {}
-    if not enable then return end
-    -- common drop names: "GunDrop" or folder "GunDrops"; try to highlight parts named "Handle" or whole model
-    for _,obj in pairs(workspace:GetDescendants()) do
-        if obj.Name:lower():find("gundrop") or obj.Name:lower():find("gun") and obj:IsA("Model") then
-            local hrp = obj:FindFirstChildWhichIsA("BasePart") or obj.PrimaryPart
-            if hrp then
-                local adorn = Instance.new("BoxHandleAdornment")
-                adorn.Adornee = hrp
-                adorn.Size = hrp.Size + Vector3.new(0.5,0.5,0.5)
-                adorn.Color3 = Color3.fromRGB(255,200,0)
-                adorn.Transparency = 0.25
-                adorn.AlwaysOnTop = true
-                adorn.Parent = hrp
-                table.insert(gunAdorns, adorn)
-            end
-        end
+-- ESP helper
+local function getESP(char)
+    local hl = char:FindFirstChild("BaconESP")
+    if not hl then
+        hl = Instance.new("Highlight")
+        hl.Name="BaconESP"
+        hl.FillTransparency=1
+        hl.OutlineColor=Color3.fromRGB(150,200,255)
+        hl.OutlineTransparency=0
+        hl.Adornee=char
+        hl.Parent=char
     end
+    return hl
 end
 
-espGunBtn.MouseButton1Click:Connect(function()
-    espGunOn = not espGunOn
-    espGunBtn.Text = espGunOn and "ESP Gun: ON" or "ESP Gun: OFF"
-    updateGunESP(espGunOn)
-end)
-
-workspace.DescendantAdded:Connect(function(obj)
-    if espGunOn then
-        -- if new gun appears
-        if obj.Name:lower():find("gundrop") or (obj:IsA("Model") and obj.Name:lower():find("gun")) then
-            task.wait(0.3)
-            updateGunESP(true)
-        end
-    end
-end)
-workspace.DescendantRemoving:Connect(function(obj)
-    if espGunOn then
-        task.wait(0.2)
-        updateGunESP(true)
-    end
-end)
-
--- Create Shoot Button (draggable small button, attempts to shoot murderer)
-local createShootBtn = make("TextButton", {Parent = mm2Page, Size = UDim2.new(0,200,0,36), Position = UDim2.new(0,10,0,160), Text = "Create Shoot Button"})
-animateTextColor(createShootBtn)
-
-local shootBtnInstance = nil
-createShootBtn.MouseButton1Click:Connect(function()
-    if shootBtnInstance and shootBtnInstance.Parent then shootBtnInstance:Destroy() shootBtnInstance = nil end
-    shootBtnInstance = make("TextButton", {Parent = gui, Size = UDim2.new(0,90,0,40), Position = UDim2.new(0.85, -100, 0.8, 0), Text = "SHOOT", BackgroundColor3 = Color3.fromRGB(200,40,40), TextColor3 = Color3.fromRGB(255,255,255)})
-    make("UICorner", {Parent = shootBtnInstance, CornerRadius = UDim.new(0,6)})
-    -- draggable
-    local dragging, dragInput, dragStart, startPos
-    shootBtnInstance.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = shootBtnInstance.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
+-- Apply Godmode
+local function applyGodmode(char)
+    if not Settings.Godmode then return end
+    task.spawn(function()
+        repeat task.wait() until char:FindFirstChild("Humanoid")
+        local hum = char:FindFirstChild("Humanoid")
+        hum.MaxHealth = math.huge
+        hum.Health = math.huge
+        hum.BreakJointsOnDeath = false
     end)
-    shootBtnInstance.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
-    end)
-    RunService.RenderStepped:Connect(function()
-        if dragging and dragInput then
-            local delta = dragInput.Position - dragStart
-            shootBtnInstance.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+end
+LocalPlayer.CharacterAdded:Connect(applyGodmode)
+if LocalPlayer.Character then applyGodmode(LocalPlayer.Character) end
 
-    -- Shoot logic
-    local function findMurderer()
-        for _,p in pairs(Players:GetPlayers()) do
-            if p ~= lp then
-                local r = getRoleValue(p)
-                if r and r:lower():find("murder") then return p end
-            end
-        end
-        return nil
-    end
-
-    local function attemptShoot(targetPlr)
-        if not targetPlr or not targetPlr.Character then return end
-        -- Try a few common approaches:
-        -- 1) If player has "Gun" tool with a RemoteEvent named "Shoot" or "FireServer" inside -> FireServer
-        local found = false
-        local tool = lp.Backpack:FindFirstChildOfClass("Tool") or lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-        if tool then
-            -- try common remote names
-            for _,child in pairs(tool:GetDescendants()) do
-                if child:IsA("RemoteEvent") and (child.Name:lower():find("shoot") or child.Name:lower():find("fire")) then
-                    pcall(function() child:FireServer(targetPlr.Character.HumanoidRootPart.Position) end)
-                    found = true
-                end
-            end
-            -- Some tools have a "Shoot" RemoteFunction or Module, try to call if exists
-            if not found and tool:FindFirstChild("Shoot") and tool.Shoot:IsA("RemoteEvent") then
-                pcall(function() tool.Shoot:FireServer(targetPlr.Character.HumanoidRootPart.Position) end)
-                found = true
-            end
-        end
-        -- 2) Try to fire a global remote (common names)
-        if not found then
-            local names = {"ShootEvent","GunRemote","Fire","FireServer","HitEvent"}
-            for _,n in pairs(names) do
-                local rn = workspace:FindFirstChild(n) or game.ReplicatedStorage:FindFirstChild(n)
-                if rn and rn:IsA("RemoteEvent") then
-                    pcall(function() rn:FireServer(targetPlr.Character.HumanoidRootPart.Position) end)
-                    found = true
-                    break
-                end
-            end
-        end
-        -- 3) As last resort, attempt to equip tool and simulate activation (may or may not work)
-        if not found and tool then
-            pcall(function()
-                lp.Character.Humanoid:EquipTool(tool)
-                tool:Activate()
-            end)
+-- Core Loops
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local hum = char.Humanoid
+        hum.WalkSpeed = Settings.RunFast and Settings.SpeedValue or 16
+        if Settings.Godmode then
+            hum.MaxHealth = math.huge
+            hum.Health = math.huge
         end
     end
 
-    shootBtnInstance.MouseButton1Click:Connect(function()
-        local murderer = findMurderer()
-        if murderer then
-            attemptShoot(murderer)
-        else
-            -- try auto pick nearest player with murderer-like role if role not set
-            local nearest, dist = nil, math.huge
-            for _,p in pairs(Players:GetPlayers()) do
-                if p~=lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local d = (lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and (lp.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude) or math.huge
-                    if d < dist then nearest, dist = p, d end
-                end
-            end
-            if nearest then attemptShoot(nearest) end
-        end
-    end)
-end)
+    -- Hitbox + ESP update
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr~=LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp=plr.Character.HumanoidRootPart
+            local allowHit = (Settings.HitboxMode=="All") or (Settings.HitboxMode=="TeamCheck" and plr.Team~=LocalPlayer.Team)
+            local allowESP = (Settings.ESPMode=="All") or (Settings.ESPMode=="TeamCheck" and plr.Team~=LocalPlayer.Team)
 
--- Auto cleanup on leave
-Players.PlayerRemoving:Connect(function(p)
-    -- remove highlights/adornments for that player
-    for _,v in pairs(espFolder:GetChildren()) do
-        if v:IsA("Highlight") and v.Name:match(p.Name) then v:Destroy() end
+            local hitbox=getHitbox(hrp)
+            hitbox.Visible=Settings.HitboxEnabled and allowHit
+            hitbox.Size=Vector3.new(Settings.HitboxSize,Settings.HitboxSize,Settings.HitboxSize)
+
+            local esp=getESP(plr.Character)
+            esp.Enabled=Settings.ESPEnabled and allowESP
+        end
     end
 end)
-
--- Keep highlights in sync when characters spawn/despawn
-Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function()
-        task.wait(0.8)
-        -- reapply ESP toggles if enabled
-        if espInnocOn and getRoleValue(p) and getRoleValue(p):lower():find("innocent") then
-            toggleRoleESP("Innocent", true, Color3.fromRGB(0,200,0))
-        end
-        if espSheriffOn and getRoleValue(p) and getRoleValue(p):lower():find("sheriff") then
-            toggleRoleESP("Sheriff", true, Color3.fromRGB(0,120,255))
-        end
-        if espMurderOn and getRoleValue(p) and getRoleValue(p):lower():find("murder") then
-            toggleRoleESP("Murderer", true, Color3.fromRGB(255,50,50))
-        end
-    end)
-end)
-
--- final: quick notify that script loaded
-pcall(function() lp:FindFirstChildOfClass("PlayerGui") end)
-print("BaconPremium loaded.")
