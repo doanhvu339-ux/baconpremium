@@ -1,0 +1,286 @@
+--// BaconPremium GUI Full (Bo tròn, giống bản trước, ON/OFF rõ)
+if not getgenv().BaconSettings then
+    getgenv().BaconSettings = {
+        SpeedToggle=false, InfJump=false, Noclip=false,
+        HitboxAll=false, HitboxTeam=false,
+        ESPAll=false, ESPTeam=false,
+        Speed=50, HitboxSize=5,
+        GodMode=false
+    }
+end
+local settings = getgenv().BaconSettings
+
+local player = game.Players.LocalPlayer
+local uis = game:GetService("UserInputService")
+local rs = game:GetService("RunService")
+
+-- GUI chính
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "BaconPremium"
+
+-- Icon bật tắt menu
+local ToggleButton = Instance.new("ImageButton", ScreenGui)
+ToggleButton.Size = UDim2.new(0,50,0,50)
+ToggleButton.Position = UDim2.new(0,20,0,200)
+ToggleButton.Image = "rbxassetid://72708576494036"
+ToggleButton.BackgroundTransparency = 1
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+
+-- Main Frame
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0,420,0,320)
+MainFrame.Position = UDim2.new(0.5,-210,0.5,-160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(173,216,230)
+MainFrame.Visible = true
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0,12)
+
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Tab bar
+local TabBar = Instance.new("Frame", MainFrame)
+TabBar.Size = UDim2.new(1,0,0,35)
+TabBar.BackgroundColor3 = Color3.fromRGB(120,180,220)
+Instance.new("UICorner", TabBar).CornerRadius = UDim.new(0,8)
+
+local Tabs = {}
+local function createTab(name)
+    local tab = Instance.new("Frame")
+    tab.Size = UDim2.new(1,0,1,-35)
+    tab.Position = UDim2.new(0,0,0,35)
+    tab.BackgroundTransparency = 1
+    tab.Name = name
+    tab.Parent = MainFrame
+    Tabs[name] = tab
+end
+
+createTab("Main")
+createTab("Vision")
+createTab("Script")
+createTab("Setting")
+
+local function showTab(name)
+    for n,f in pairs(Tabs) do f.Visible = (n==name) end
+    for _,btn in pairs(TabBar:GetChildren()) do
+        if btn:IsA("TextButton") then
+            btn.BackgroundColor3 = (btn.Text==name) and Color3.fromRGB(70,140,190) or Color3.fromRGB(120,180,220)
+        end
+    end
+end
+
+local function addTabButton(name,order)
+    local btn = Instance.new("TextButton", TabBar)
+    btn.Size = UDim2.new(0,100,1,0)
+    btn.Position = UDim2.new(0,(order-1)*100,0,0)
+    btn.BackgroundColor3 = Color3.fromRGB(120,180,220)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Text = name
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+    btn.MouseButton1Click:Connect(function() showTab(name) end)
+end
+
+addTabButton("Main",1)
+addTabButton("Vision",2)
+addTabButton("Script",3)
+addTabButton("Setting",4)
+
+showTab("Main")
+
+-- Toggle button helper
+local function createToggleButton(parent,text,y,settingKey,callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0,200,0,40)
+    btn.Position = UDim2.new(0,20,0,y)
+    btn.BackgroundColor3 = Color3.fromRGB(135,206,235)
+    btn.TextColor3 = Color3.fromRGB(0,0,0)
+    btn.Text = text.." : "..(settings[settingKey] and "ON" or "OFF")
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
+
+    btn.MouseButton1Click:Connect(function()
+        settings[settingKey] = not settings[settingKey]
+        btn.Text = text.." : "..(settings[settingKey] and "ON" or "OFF")
+        callback(settings[settingKey])
+    end)
+
+    if settings[settingKey] then
+        callback(true)
+        btn.Text = text.." : ON"
+    end
+end
+
+-------------------------------------------------
+-- TAB MAIN
+createToggleButton(Tabs["Main"],"Speed",20,"SpeedToggle",function(on)
+    if on then
+        if not getgenv().SpeedConn then
+            getgenv().SpeedConn = rs.Stepped:Connect(function()
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    player.Character.Humanoid.WalkSpeed = settings.Speed
+                end
+            end)
+        end
+    else
+        if getgenv().SpeedConn then getgenv().SpeedConn:Disconnect() getgenv().SpeedConn=nil end
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = 16
+        end
+    end
+end)
+
+createToggleButton(Tabs["Main"],"InfJump",70,"InfJump",function(on)
+    if on then
+        if not getgenv().InfJumpConn then
+            getgenv().InfJumpConn = uis.JumpRequest:Connect(function()
+                if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                    player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+                end
+            end)
+        end
+    else
+        if getgenv().InfJumpConn then getgenv().InfJumpConn:Disconnect() getgenv().InfJumpConn=nil end
+    end
+end)
+
+createToggleButton(Tabs["Main"],"Noclip",120,"Noclip",function(on)
+    if on then
+        if not getgenv().NoclipConn then
+            getgenv().NoclipConn = rs.Stepped:Connect(function()
+                if player.Character then
+                    for _,v in pairs(player.Character:GetDescendants()) do
+                        if v:IsA("BasePart") then v.CanCollide = false end
+                    end
+                end
+            end)
+        end
+    else
+        if getgenv().NoclipConn then getgenv().NoclipConn:Disconnect() getgenv().NoclipConn=nil end
+    end
+end)
+
+-------------------------------------------------
+-- TAB VISION
+local function applyHitbox(p,teamCheck)
+    if p~=player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        if teamCheck and p.Team==player.Team then return end
+        if not p.Character:FindFirstChild("BaconHitbox") then
+            local box = Instance.new("BoxHandleAdornment")
+            box.Name = "BaconHitbox"
+            box.Size = Vector3.new(settings.HitboxSize,settings.HitboxSize,settings.HitboxSize)
+            box.Color3 = Color3.fromRGB(135,206,235)
+            box.Transparency = 0.7
+            box.AlwaysOnTop = true
+            box.ZIndex = 5
+            box.Adornee = p.Character.HumanoidRootPart
+            box.Parent = p.Character
+        else
+            p.Character.BaconHitbox.Size = Vector3.new(settings.HitboxSize,settings.HitboxSize,settings.HitboxSize)
+        end
+    end
+end
+local function resetHitbox(p)
+    if p.Character and p.Character:FindFirstChild("BaconHitbox") then
+        p.Character.BaconHitbox:Destroy()
+    end
+end
+
+local function applyESP(p,teamCheck)
+    if p~=player and p.Character then
+        if teamCheck and p.Team==player.Team then return end
+        if not p.Character:FindFirstChild("BaconESP") then
+            local hl = Instance.new("Highlight")
+            hl.Name = "BaconESP"
+            hl.FillTransparency = 1
+            hl.OutlineTransparency = 0
+            hl.OutlineColor = Color3.fromRGB(135,206,235)
+            hl.Adornee = p.Character
+            hl.Parent = p.Character
+        end
+    end
+end
+local function resetESP(p)
+    if p.Character and p.Character:FindFirstChild("BaconESP") then
+        p.Character.BaconESP:Destroy()
+    end
+end
+
+createToggleButton(Tabs["Vision"],"Hitbox All",20,"HitboxAll",function() end)
+createToggleButton(Tabs["Vision"],"Hitbox Team",70,"HitboxTeam",function() end)
+createToggleButton(Tabs["Vision"],"ESP All",120,"ESPAll",function() end)
+createToggleButton(Tabs["Vision"],"ESP Team",170,"ESPTeam",function() end)
+
+rs.RenderStepped:Connect(function()
+    for _,p in pairs(game.Players:GetPlayers()) do
+        if settings.HitboxAll or settings.HitboxTeam then applyHitbox(p,settings.HitboxTeam) else resetHitbox(p) end
+        if settings.ESPAll or settings.ESPTeam then applyESP(p,settings.ESPTeam) else resetESP(p) end
+    end
+end)
+
+-------------------------------------------------
+-- TAB SCRIPT
+local function addScriptButton(name,y,url)
+    local btn = Instance.new("TextButton", Tabs["Script"])
+    btn.Size = UDim2.new(0,200,0,40)
+    btn.Position = UDim2.new(0,20,0,y)
+    btn.BackgroundColor3 = Color3.fromRGB(135,206,235)
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(0,0,0)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
+    btn.MouseButton1Click:Connect(function()
+        loadstring(game:HttpGet(url))()
+    end)
+end
+
+addScriptButton("FlyGui",20,"https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt")
+addScriptButton("TpBoBaconPremium",70,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/tpbobaconpremium")
+addScriptButton("Car",120,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/Car")
+addScriptButton("FloatBacon",170,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/floatbacon")
+addScriptButton("AFK",220,"https://raw.githubusercontent.com/doanhvu339-ux/baconpremium/refs/heads/main/Afk")
+
+-------------------------------------------------
+-- TAB SETTING
+local speedBox = Instance.new("TextBox", Tabs["Setting"])
+speedBox.Size = UDim2.new(0,150,0,40)
+speedBox.Position = UDim2.new(0,20,0,20)
+speedBox.PlaceholderText = "Speed"
+speedBox.Text = tostring(settings.Speed)
+Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0,10)
+
+speedBox.FocusLost:Connect(function()
+    local val = tonumber(speedBox.Text)
+    if val then settings.Speed = val end
+end)
+
+local hitboxBox = Instance.new("TextBox", Tabs["Setting"])
+hitboxBox.Size = UDim2.new(0,150,0,40)
+hitboxBox.Position = UDim2.new(0,20,0,80)
+hitboxBox.PlaceholderText = "Hitbox Size"
+hitboxBox.Text = tostring(settings.HitboxSize)
+Instance.new("UICorner", hitboxBox).CornerRadius = UDim.new(0,10)
+
+hitboxBox.FocusLost:Connect(function()
+    local val = tonumber(hitboxBox.Text)
+    if val then settings.HitboxSize = val end
+end)
+
+createToggleButton(Tabs["Setting"],"GodMode",140,"GodMode",function(on)
+    if on and player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.Name = "GodHumanoid"
+        local newHum = player.Character.GodHumanoid:Clone()
+        newHum.Parent = player.Character
+        player.Character.GodHumanoid:Destroy()
+    end
+end)
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    if settings.GodMode and player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.Name = "GodHumanoid"
+        local newHum = player.Character.GodHumanoid:Clone()
+        newHum.Parent = player.Character
+        player.Character.GodHumanoid:Destroy()
+    end
+end)
